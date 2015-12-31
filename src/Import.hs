@@ -8,4 +8,6 @@ pRoutes = [parseRoutes|
    /listar ListarR GET
    /pessoa/#PessoaId PessoaR GET
    /depto DeptoR GET POST
+   /usuario UsuarioR GET POST
+   /listusuario ListUsuarioR GET
 |]

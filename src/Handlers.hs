@@ -29,6 +29,11 @@ formPessoa = renderDivs $ Pessoa <$>
              areq doubleField "Salario" Nothing <*>
              areq (selectField dptos) "Depto" Nothing
 
+formUsuario :: Form Usuario
+formUsuario = renderDivs $ Usuario <$>
+             areq textField "Login" Nothing <*>
+             areq passwordField "Senha" Nothing            
+
 dptos = do
        entidades <- runDB $ selectList [] [Asc DepartamentoNome] 
        optionsPairs $ fmap (\ent -> (departamentoSigla $ entityVal ent, entityKey ent)) entidades
@@ -40,6 +45,10 @@ widgetForm x enctype widget y = [whamlet|
             <form method=post action=@{x} enctype=#{enctype}>
                 ^{widget}
                 <input type="submit" value="Cadastrar">
+|] >> toWidget [lucius|
+    label{
+        color:blue;
+    }
 |]
 
 getCadastroR :: Handler Html
@@ -49,11 +58,13 @@ getCadastroR = do
 
 getPessoaR :: PessoaId -> Handler Html
 getPessoaR pid = do
-             pessoa <- runDB $ get404 pid 
+             pessoa <- runDB $ get404 pid
+             depto <- runDB $ get $ (pessoaDeptoid pessoa)
              defaultLayout [whamlet| 
                  <h1> Seja bem-vindx #{pessoaNome pessoa}
                  <p> Salario: #{pessoaSalario pessoa}
                  <p> Idade: #{pessoaIdade pessoa}
+                 <p> Departamento: #{show $ fmap departamentoNome depto}
              |]
 
 getListarR :: Handler Html
@@ -92,8 +103,32 @@ postDeptoR = do
                        |]
                     _ -> redirect DeptoR
 
+getUsuarioR :: Handler Html
+getUsuarioR = do
+              (widget,enctype) <- generateFormPost formUsuario
+              defaultLayout $ widgetForm UsuarioR enctype widget "Usuario"
 
-connStr = "dbname=dd9en8l5q4hh2a host=ec2-107-21-219-201.compute-1.amazonaws.com user=kpuwtbqndoeyqb password=aCROh525uugAWF1l7kahlNN3E0 port=5432"
+postUsuarioR :: Handler Html
+postUsuarioR = do
+                ((result, _), _) <- runFormPost formUsuario
+                case result of
+                    FormSuccess usuario -> do
+                       runDB $ insert usuario
+                       defaultLayout [whamlet|
+                           <h1> #{show usuario} Inserido com sucesso. 
+                       |]
+                    _ -> redirect UsuarioR
+
+getListUsuarioR :: Handler Html
+getListUsuarioR = do
+             listaU <- runDB $ selectList [] [Asc UsuarioLogin]
+             defaultLayout [whamlet|
+                 <h1> Usuarios Cadastrados:
+                 $forall Entity uid usuario <- listaU
+                     <p> #{usuarioLogin usuario} <br>
+             |]
+
+connStr = "dbname=d41edljqvq29s3 host=ec2-107-21-223-72.compute-1.amazonaws.com user=lzmgovjvibjjnf password=E_kj4Kn5vzVleMxgtFEwDCP4cV port=5432"
 
 main::IO()
 main = runStdoutLoggingT $ withPostgresqlPool connStr 10 $ \pool -> liftIO $ do 
